@@ -1,188 +1,10 @@
-// import React, { useState, useRef, useEffect } from 'react';
-// import { Canvas, useFrame } from '@react-three/fiber';
-// import { OrbitControls } from '@react-three/drei';
-// import * as THREE from 'three';
-
-// export default function AudioVisualizer3D() {
-//   const [audioContext, setAudioContext] = useState(null);
-//   const [analyzer, setAnalyzer] = useState(null);
-//   const [audioSource, setAudioSource] = useState(null);
-//   const [isPlaying, setIsPlaying] = useState(false);
-//   const [fileName, setFileName] = useState('');
-
-//   // Handle file input: read file, decode, and setup Analyser
-//   const handleFileChange = (e) => {
-//     const file = e.target.files?.[0];
-//     if (!file) return;
-
-//     setFileName(file.name);
-
-//     // Create or reuse an AudioContext
-//     const newAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-//     setAudioContext(newAudioContext);
-
-//     const reader = new FileReader();
-//     reader.onload = async (event) => {
-//       if (!event?.target?.result) return;
-//       const arrayBuffer = event.target.result;
-
-//       // Decode the audio data
-//       const audioBuffer = await newAudioContext.decodeAudioData(arrayBuffer);
-
-//       // Create a buffer source
-//       const source = newAudioContext.createBufferSource();
-//       source.buffer = audioBuffer;
-
-//       // Create an analyser node
-//       const newAnalyzer = newAudioContext.createAnalyser();
-//       newAnalyzer.fftSize = 128; // can adjust to taste
-
-//       // Connect source -> analyser -> destination
-//       source.connect(newAnalyzer);
-//       newAnalyzer.connect(newAudioContext.destination);
-
-//       // Store
-//       setAnalyzer(newAnalyzer);
-//       setAudioSource(source);
-//     };
-//     reader.readAsArrayBuffer(file);
-//   };
-
-//   const handlePlay = () => {
-//     if (!audioContext || !audioSource) return;
-
-//     // If context is suspended, resume it
-//     if (audioContext.state === 'suspended') {
-//       audioContext.resume();
-//     }
-
-//     // Start playing from the beginning
-//     try {
-//       audioSource.start(0);
-//       setIsPlaying(true);
-//     } catch (err) {
-//       // If user plays multiple times, source can only start once
-//       console.warn('Audio source may already have been started:', err);
-//     }
-//   };
-
-//   const handleStop = () => {
-//     if (!audioSource) return;
-//     try {
-//       audioSource.stop();
-//     } catch (err) {
-//       console.warn('Audio source may already have been stopped:', err);
-//     }
-//     setIsPlaying(false);
-//   };
-
-//   return (
-//     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
-//       {/* Controls */}
-//       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
-//         <input type="file" accept="audio/*" onChange={handleFileChange} 
-//             style={{
-//                 marginBottom: '10px',
-//                 padding: '5px',
-//                 borderRadius: '5px',
-//                 // border: '3px solid #ccc',
-//                 backgroundColor: '#f9f9f9',
-//                 fontSize: '14px',
-//                 cursor: 'pointer'
-
-//             }}
-//         />
-//         {fileName && <p>Loaded: {fileName}</p>}
-//         {!isPlaying ? (
-//           <button 
-//             onClick={handlePlay} 
-//             disabled={!analyzer || isPlaying}
-//             onMouseEnter={(e) => e.target.style.background = 'rgb(72, 72, 72)'}
-//             onMouseLeave={(e) => e.target.style.background = 'rgb(52, 52, 52)'}
-//             style={{
-//                 padding: '5px 10px',
-//                 borderRadius: '5px',
-//                 background: 'rgb(52, 52, 52)',
-//                 color: 'white',
-//                 fontSize: '14px',
-//                 cursor: 'pointer'
-//             }}
-//           >
-//             Play
-//           </button>
-//         ) : (
-//           <button onClick={handleStop}>Stop</button>
-//         )}
-//       </div>
-
-//       {/* 3D Canvas */}
-//       <Canvas
-//         camera={{ position: [0, 3, 8], fov: 60 }}
-//         style={{ background: '#fff', width: '100%', height: '100%' }}
-//       >
-//         <ambientLight intensity={0.4} />
-//         <pointLight position={[10, 10, 10]} />
-//         <OrbitControls />
-
-//         {analyzer && <Bars analyzer={analyzer} />}
-//       </Canvas>
-//     </div>
-//   );
-// }
-
-// // A sub-component (still in the same file) that renders our bars in a circle
-// function Bars({ analyzer }) {
-//   const barsRef = useRef([]);
-//   const barCount = 64; // number of frequency bins to visualize
-//   const radius = 3;    // radius of the circular arrangement
-
-//   // We'll store frequency data in a typed array for performance
-//   const dataArray = useRef(new Uint8Array(analyzer.frequencyBinCount));
-
-//   useFrame(() => {
-//     if (!analyzer) return;
-//     // Get the frequency data
-//     analyzer.getByteFrequencyData(dataArray.current);
-
-//     // For each bar, scale according to frequency data
-//     barsRef.current.forEach((mesh, i) => {
-//       if (!mesh) return;
-//       const scaleY = (dataArray.current[i] / 255) * 5; // scale factor
-//       mesh.scale.y = 0.1 + scaleY;
-//     });
-//   });
-
-//   const meshes = [];
-//   for (let i = 0; i < barCount; i++) {
-//     const angle = (i / barCount) * Math.PI * 2;
-//     const x = Math.cos(angle) * radius;
-//     const z = Math.sin(angle) * radius;
-//     const y = 0; // keep everything on the "floor" at y=0
-
-//     meshes.push(
-//       <mesh
-//         key={i}
-//         position={[x, y, z]}
-//         rotation={[0, angle, 0]}
-//         ref={(ref) => (barsRef.current[i] = ref)}
-//       >
-//         <boxGeometry args={[0.2, 1, 0.2]} />
-//         {/* Gradually change color around the circle */}
-//         <meshStandardMaterial color={`hsl(${(i / barCount) * 360}, 100%, 50%)`} />
-//       </mesh>
-//     );
-//   }
-
-//   return <group>{meshes}</group>;
-// }
-
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Canvas, useFrame} from '@react-three/fiber';
 import { OrbitControls, Text3D, Points } from '@react-three/drei';
 import * as THREE from 'three';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPlay, faStop } from '@fortawesome/free-solid-svg-icons'
+import { Link } from 'react-router-dom';
 
 
 
@@ -287,6 +109,20 @@ const handlePlay = () => {
             letterSpacing: '1.2px',
         }}
       >WAV WHEEL</h1>
+      <Link to="/about">
+        <p
+            style={{
+                position: 'absolute',
+                top: '15px',
+                right: '10%',
+                transform: 'translateX(-50%)',
+                zIndex: 100,
+                fontSize: '14px',
+                // color: 'black',
+            }}
+        >what is wav wheel?</p>
+
+      </Link>
       {/* Controls */}
       <div style={{ position: 'absolute', top: '10%', left: '25%', zIndex: 100 }}>
         <input
@@ -449,37 +285,7 @@ function Bars({ analyzer }) {
 
   }
 
-/** 2) Waveform Visual — “Snake” line that plots the time-domain data */
-// function Waveform({ analyzer }) {
-//   const lineRef = useRef();
-//   const dataArray = useRef(new Uint8Array(analyzer.fftSize));
-//   const waveGeometryRef = useRef(null);
-
-//   useFrame(() => {
-//     analyzer.getByteTimeDomainData(dataArray.current);
-
-//     const points = [];
-//     // We'll make a "snake" line that travels on the X-axis 
-//     // and uses the Y-axis for waveform amplitude
-//     // You can also do more complex 3D shapes or rotations
-//     for (let i = 0; i < dataArray.current.length; i++) {
-//       const x = (i / dataArray.current.length) * 6 - 3; // from -3 to +3
-//       const y = (dataArray.current[i] - 128) / 128; // -1 to +1
-//       points.push(new THREE.Vector3(x, y, 0));
-//     }
-
-//     if (waveGeometryRef.current) {
-//       waveGeometryRef.current.setFromPoints(points);
-//     }
-//   });
-
-//   return (
-//     <line ref={lineRef}>
-//       <bufferGeometry ref={waveGeometryRef} />
-//       <lineBasicMaterial color="orange" linewidth={2} />
-//     </line>
-//   );
-// }
+/** 2) Waveform Visual — line that plots the time-domain data in the spiral */
 function Waveform({ analyzer }) {
     const groupRef = useRef();
     const linesRef = useRef([]);
